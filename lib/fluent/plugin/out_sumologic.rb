@@ -27,7 +27,19 @@ class SumologicConnection
   end
 
   def publish(raw_data, source_host=nil, source_category=nil, source_name=nil, data_type, metric_data_type, collected_fields, dimensions)
-    response = http.post(@endpoint, compress(raw_data), request_headers(source_host, source_category, source_name, data_type, metric_data_type, collected_fields, dimensions))
+    compressed_data = compress(raw_data)
+    start_at = Time.now
+    response = http.post(@endpoint, compressed_data, request_headers(source_host, source_category, source_name, data_type, metric_data_type, collected_fields, dimensions))
+    end_at = Time.now
+
+    @logger.debug("[#{self.class}]: publish takes #{end_at - start_at}s, data_size=#{compressed_data.bytesize} bytes, source_category=#{source_category}, source_name=#{source_name}, data_type=#{data_type}")
+
+    @logger.warn("[#{self.class}]: publish takes #{end_at - start_at}s, data_size=#{compressed_data.bytesize} bytes, source_category=#{source_category}, source_name=#{source_name}, data_type=#{data_type}")
+
+    if end_at - start_at > 5
+      @logger.warn("[#{self.class}]: publish takes #{end_at - start_at}s, data_size=#{compressed_data.bytesize} bytes, source_category=#{source_category}, source_name=#{source_name}, data_type=#{data_type}")
+    end
+
     unless response.ok?
       raise RuntimeError, "Failed to send data to HTTP Source. #{response.code} - #{response.body}"
     end
